@@ -5,6 +5,7 @@ use hyprland::{
     dispatch::{
         Direction, Dispatch, DispatchType, WindowIdentifier, WindowMove,
         WorkspaceIdentifierWithSpecial,
+        Direction, Dispatch, DispatchType, WindowIdentifier, WorkspaceIdentifierWithSpecial,
     },
     shared::{HyprData, HyprDataActiveOptional, HyprDataVec},
 };
@@ -33,6 +34,13 @@ fn main() -> anyhow::Result<()> {
     use Command::*;
     match params.cmd {
         Next(params) => {
+            if params.no_wrap
+                && is_bound(&act_client, right, true)
+                && is_wrapping_boundary(&clients, act_ws_id, next_ws_id, true)
+            {
+                return Ok(());
+            }
+
             let next_left = get_bound_client(&clients, next_ws_id).map_or(first_client, |(c, _)| c);
 
             if is_bound(&act_client, right, true) {
@@ -42,6 +50,13 @@ fn main() -> anyhow::Result<()> {
             }
         }
         Prev(params) => {
+            if params.no_wrap
+                && is_bound(&act_client, left, false)
+                && is_wrapping_boundary(&clients, act_ws_id, prev_ws_id, false)
+            {
+                return Ok(());
+            }
+
             let prev_right = get_bound_client(&clients, prev_ws_id).map_or(last_client, |(_, c)| c);
 
             if is_bound(&act_client, left, false) {
@@ -159,6 +174,36 @@ fn get_neighborhood_workspace(clients: &[Client], act_ws_id: i32) -> (i32, i32) 
     let prev = if prev == act_ws_id { max } else { prev };
     let next = if next == act_ws_id { min } else { next };
     (prev, next)
+}
+
+#[inline]
+fn is_wrapping_boundary(
+    clients: &[Client],
+    act_ws_id: i32,
+    neighbor_ws_id: i32,
+    direction_right: bool,
+) -> bool {
+    let ws_ids: Vec<i32> = clients
+        .iter()
+        .filter(|c| !c.workspace.name.starts_with("special"))
+        .map(|c| c.workspace.id)
+        .collect();
+
+    if ws_ids.is_empty() {
+        return false;
+    }
+
+    let min_ws_id = *ws_ids.iter().min().unwrap();
+    let max_ws_id = *ws_ids.iter().max().unwrap();
+
+    // Wrap to the right (Next) means jumping from MAX to MIN.
+    if direction_right {
+        return neighbor_ws_id == min_ws_id && act_ws_id == max_ws_id;
+    }
+    // Wrap to the left (Prev) means jumping from MIN to MAX.
+    else {
+        return neighbor_ws_id == max_ws_id && act_ws_id == min_ws_id;
+    }
 }
 
 fn get_bound_client(clients: &[Client], workspace: i32) -> Option<(&Client, &Client)> {
