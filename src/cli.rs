@@ -20,6 +20,8 @@ pub enum Command {
 pub struct CommandNext {
     #[argh(switch, description = "swap window")]
     pub swap: bool,
+    #[argh(switch, description = "disable wrapping around workspaces")]
+    pub no_wrap: bool,
     #[argh(switch, description = "move window")]
     pub move_window: bool,
 }
@@ -30,6 +32,8 @@ pub struct CommandNext {
 pub struct CommandPrev {
     #[argh(switch, description = "swap window")]
     pub swap: bool,
+    #[argh(switch, description = "disable wrapping around workspaces")]
+    pub no_wrap: bool,
     #[argh(switch, description = "move window")]
     pub move_window: bool,
 }

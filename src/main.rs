@@ -5,7 +5,6 @@ use hyprland::{
     dispatch::{
         Direction, Dispatch, DispatchType, WindowIdentifier, WindowMove,
         WorkspaceIdentifierWithSpecial,
-        Direction, Dispatch, DispatchType, WindowIdentifier, WorkspaceIdentifierWithSpecial,
     },
     shared::{HyprData, HyprDataActiveOptional, HyprDataVec},
 };
