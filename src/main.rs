@@ -3,6 +3,8 @@ use std::cmp;
 use hyprland::{
     data::{Client, Clients},
     dispatch::{
+        Direction, Dispatch, DispatchType, WindowIdentifier, WindowMove,
+        WorkspaceIdentifierWithSpecial,
         Direction, Dispatch, DispatchType, WindowIdentifier, WorkspaceIdentifierWithSpecial,
     },
     shared::{HyprData, HyprDataActiveOptional, HyprDataVec},
@@ -42,9 +44,9 @@ fn main() -> anyhow::Result<()> {
             let next_left = get_bound_client(&clients, next_ws_id).map_or(first_client, |(c, _)| c);
 
             if is_bound(&act_client, right, true) {
-                handle_bound_navigation(next_left, &act_client, params.swap)?;
+                handle_bound_navigation(next_left, &act_client, params.swap, params.move_window)?;
             } else {
-                handle_default_navigation(Direction::Right, params.swap)?;
+                handle_default_navigation(Direction::Right, params.swap, params.move_window)?;
             }
         }
         Prev(params) => {
@@ -58,9 +60,9 @@ fn main() -> anyhow::Result<()> {
             let prev_right = get_bound_client(&clients, prev_ws_id).map_or(last_client, |(_, c)| c);
 
             if is_bound(&act_client, left, false) {
-                handle_bound_navigation(prev_right, &act_client, params.swap)?;
+                handle_bound_navigation(prev_right, &act_client, params.swap, params.move_window)?;
             } else {
-                handle_default_navigation(Direction::Left, params.swap)?
+                handle_default_navigation(Direction::Left, params.swap, params.move_window)?
             };
         }
     };
@@ -79,9 +81,11 @@ fn handle_in_empty_ws(params: Flags) -> anyhow::Result<()> {
 }
 
 #[inline]
-fn handle_default_navigation(dir: Direction, swap: bool) -> anyhow::Result<()> {
+fn handle_default_navigation(dir: Direction, swap: bool, move_window: bool) -> anyhow::Result<()> {
     Dispatch::call(if swap {
         DispatchType::SwapWindow(dir)
+    } else if move_window {
+        DispatchType::MoveWindow(WindowMove::Direction(dir))
     } else {
         DispatchType::MoveFocus(dir)
     })?;
@@ -89,9 +93,25 @@ fn handle_default_navigation(dir: Direction, swap: bool) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn handle_bound_navigation(client: &Client, act_client: &Client, swap: bool) -> anyhow::Result<()> {
+fn handle_move_window_to_ws(act_client: &Client, target_ws_id: i32) -> anyhow::Result<()> {
+    // Use non-silent move to workspace to move client and focus new workspace
+    Dispatch::call(DispatchType::MoveToWorkspace(
+        WorkspaceIdentifierWithSpecial::Id(target_ws_id),
+        Some(WindowIdentifier::Address(act_client.address.clone())),
+    ))?;
+    Ok(())
+}
+
+fn handle_bound_navigation(
+    client: &Client,
+    act_client: &Client,
+    swap: bool,
+    move_window: bool,
+) -> anyhow::Result<()> {
     if swap {
         handle_swap(client, act_client)
+    } else if move_window {
+        handle_move_window_to_ws(act_client, client.workspace.id)
     } else {
         handle_focus(client)
     }
